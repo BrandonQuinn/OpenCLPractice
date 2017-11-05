@@ -30,7 +30,7 @@ cl_platform_id* GetPlatforms(
 // Print the vendor and name of all platforms found.
 void PrintPlatformInformation(
 		cl_platform_id* platforms, 
-		cl_uint numPlatforms)
+		const cl_uint numPlatforms)
 {
 	char* platformData;
 	size_t dataSize;
@@ -64,7 +64,8 @@ void PrintPlatformInformation(
 
 // Get all GPU devies on the given platform and return the ID
 // to the first GPU found.
-cl_device_id GetFirstGPU(cl_platform_id platform)
+cl_device_id GetFirstGPU(
+		const cl_platform_id platform)
 {
 	size_t numDevices;
 	cl_uint error;
@@ -86,7 +87,8 @@ cl_device_id GetFirstGPU(cl_platform_id platform)
 }
 
 // Print out the name and vendor of the ginve device.
-void PrintDeviceInfo(cl_device_id device)
+void PrintDeviceInfo(
+		const cl_device_id device)
 {
 	cl_uint error;
 	char data[4096]; size_t dataSize;
@@ -98,7 +100,8 @@ void PrintDeviceInfo(cl_device_id device)
 }
 
 // Create a context for the given device.
-cl_context CreateContext(cl_device_id device)
+cl_context CreateContext(
+		const cl_device_id device)
 {
 	cl_uint error;
 	cl_context context;
@@ -114,7 +117,8 @@ cl_context CreateContext(cl_device_id device)
 }
 
 // Read in the program source and create a cl_program from it.
-cl_program CreateProgram(cl_context context)
+cl_program CreateProgram(
+		const cl_context context)
 {
 	cl_program program;
 	cl_uint error;
@@ -131,7 +135,7 @@ cl_program CreateProgram(cl_context context)
 	fseek(handle, 0, SEEK_END);
 	programSize = ftell(handle);
 	rewind(handle);
-	programBuf = (char*) malloc(sizeof(char) * programSize);
+	programBuf = (char*) malloc(sizeof(char) * programSize + 1);
 	programBuf[programSize] = '\0';
 	fread(programBuf, sizeof(char), programSize, handle);
 	fclose(handle);
@@ -148,7 +152,9 @@ cl_program CreateProgram(cl_context context)
 }
 
 // Build the program and if it fails print out the log information.
-void BuildProgram(cl_program program, cl_device_id device)
+void BuildProgram(
+		const cl_program program, 
+		const cl_device_id device)
 {
 	cl_uint error, logSize;
 	char* programLog;
@@ -166,14 +172,36 @@ void BuildProgram(cl_program program, cl_device_id device)
 	}
 }
 
+// Create the command queue for thi given device and context.
+cl_command_queue CreateCommandQueue(
+		const cl_context context, 
+		const cl_device_id device)
+{
+	cl_command_queue commandQueue;
+	cl_uint error;
+	
+	commandQueue = clCreateCommandQueue(context, device, 0, &error);
+
+	if (error != CL_SUCCESS) {
+		printf("Failed to create command queue\n");
+		exit(EXIT_FAILURE);
+	}
+
+	return commandQueue;
+}
+
 int main() 
 {
+	cl_uint error;
 	cl_platform_id* platforms;
 	cl_platform_id curPlatform;
 	cl_uint numPlatforms;
 	cl_device_id curDevice;
 	cl_context context;
 	cl_program program;
+	cl_kernel addKernel; cl_kernel subKernel;
+	cl_kernel multKernel; cl_kernel divKernel;
+	cl_command_queue queue;
 
 	// platform
 	platforms = GetPlatforms(&numPlatforms);
@@ -188,10 +216,39 @@ int main()
 	program = CreateProgram(context);
 	BuildProgram(program, curDevice);
 
+	// create each kernel
+	addKernel = clCreateKernel(program, ADD_KERNEL, &error);
+	if (error = CL_SUCCESS) {
+		printf("Failed to create kernel: %s\n", ADD_KERNEL);
+	}
 
+	subKernel = clCreateKernel(program, SUB_KERNEL, &error);
+	if (error = CL_SUCCESS) {
+		printf("Failed to create kernel: %s\n", SUB_KERNEL);
+	}
+
+	multKernel = clCreateKernel(program, MULT_KERNEL, &error);
+	if (error = CL_SUCCESS) {
+		printf("Failed to create kernel: %s\n", MULT_KERNEL);
+	}
+
+	divKernel = clCreateKernel(program, DIV_KERNEL, &error);
+	if (error = CL_SUCCESS) {
+		printf("Failed to create kernel: %s\n", DIV_KERNEL);
+	}
+
+	// create command queue
+	queue = CreateCommandQueue(context, curDevice);
+
+	
 
 	getchar();
 
+	clReleaseCommandQueue(queue);
+	clReleaseKernel(addKernel);
+	clReleaseKernel(subKernel);
+	clReleaseKernel(multKernel);
+	clReleaseKernel(divKernel);
 	clReleaseProgram(program);
 	clReleaseContext(context);
 	free(platforms);
